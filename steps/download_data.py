@@ -35,5 +35,3 @@ def download_dataset()-> DatasetDict:
     logging.info("Data retrieved successfully!")
 
     return dataset
-
-download_dataset()
