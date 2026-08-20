@@ -6,7 +6,15 @@ from torch.nn.functional import cross_entropy
 
 
 class ConvolutionalBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, padding):
+    """
+    A simple convolutional block consisitng of Conv2d, ReLU, and MaxPool2d layers.
+    args:
+        in_channels - The number of input channels of the block.
+        out_channels - The number of desired output channels.
+        kernel_size - The size of the kernel used for the convolution.
+        padding - Size of the padding.
+    """
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, padding: int):
         super().__init__()
         self.block = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, padding=padding),
@@ -19,7 +27,21 @@ class ConvolutionalBlock(nn.Module):
 
 
 class ClassyClassifier(nn.Module):
-    def __init__(self, conv_layers, filters, kernel_sizes, dropout, fc_size, lr):
+    """
+    The main architecture of the model. It is generated dynamically based on the
+    input parameters.
+    args:
+        conv_layers - The desired number convolutional blocks for the architecture.
+        filters - The different number of filters to be applied. The length of the 
+            list must match the number of conv_layers.
+        kernel_sizes - The sizes of the kernels. The length of the list must match
+            the number of conv_layers.
+        dropuot - The dropout rate for the dropout layers.
+        fc_size - Number of neurons for the fully connected layer.
+        lr - Learning rate.
+
+    """
+    def __init__(self, conv_layers: int, filters: list[int], kernel_sizes: list[int], dropout: float, fc_size: int, lr: float):
         super(ClassyClassifier, self).__init__()
         self.conv_layers = conv_layers
         self.filters = filters
@@ -61,7 +83,22 @@ class ClassyClassifier(nn.Module):
 
 
 class LightningClassifier(pl.LightningModule):
-    def __init__(self, classifier: ClassyClassifier, conv_layers, filters, kernel_sizes, dropout, fc_size, lr):
+    """
+    A lightning module for the CNN architecture. It facilitates the training process
+    when using lightning trainer. Automatically logs hyperparameters.
+    args:
+        classifier - An instance of the ClassyClassifier architecture.
+        conv_layers - The desired number convolutional blocks for the architecture.
+        filters - The different number of filters to be applied. The length of the 
+            list must match the number of conv_layers.
+        kernel_sizes - The sizes of the kernels. The length of the list must match
+            the number of conv_layers.
+        dropuot - The dropout rate for the dropout layers.
+        fc_size - Number of neurons for the fully connected layer.
+        lr - Learning rate. 
+    All of the previous parameters are the hyperparameters required by the ClassyClassifier model.
+    """
+    def __init__(self, classifier: ClassyClassifier, conv_layers: int, filters: list[int], kernel_sizes: list[int], dropout: float, fc_size: int, lr: float):
         super().__init__()
         self.save_hyperparameters(ignore=['classifier'])
         self.conv_layers = conv_layers

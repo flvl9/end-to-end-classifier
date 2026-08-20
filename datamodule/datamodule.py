@@ -12,6 +12,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class PlantVillageDatamodule(pl.LightningDataModule):
+    """
+    Defines the Data Module required by the lightning trainer.
+    Contains the logic of how to download and preprocess the dataset, returning
+    the dataloaders for the training and validation stages.
+    args:
+        cache_path - The directory where the dataset cache will be stored.
+        data_path - The directory where the dataset will be created and stored.
+        train_batch_size - Batch size for the training dataloader.
+        val_batch_size - Batch size for the validation dataloader.
+    """
     def __init__(self, cache_path: str, data_path: str, train_batch_size: int, val_batch_size: int):
         super().__init__()
         self.cache_dir = os.path.abspath(cache_path)

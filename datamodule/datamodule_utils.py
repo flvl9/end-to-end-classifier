@@ -42,7 +42,7 @@ def val_transforms(dataset: Dict[str, List[Any]])-> Dict[str, List[Any]]:
     args:
         dataset - A dictionary containing a batch of a HuggingFace dataset.
     returns:
-        dataset: The same dictionary with a new "image_tensor" key-value with
+        dataset - The same dictionary with a new "image_tensor" key-value with
         the normalized pixel values.
     """
     
@@ -52,6 +52,13 @@ def val_transforms(dataset: Dict[str, List[Any]])-> Dict[str, List[Any]]:
     return dataset
 
 def collate(dataset_batch: List[Dict[str, Any]])-> Dict[str, torch.Tensor]:
+    """
+    Defines how to combine the samples of the dataset into a mini-batch.
+    args:
+        dataset_batch: A list of examples from the dataset.
+    returns:
+        A dictionary containing the processed batch to feed the model.
+    """
     tensors = [data["image_tensor"] for data in dataset_batch]
     labels = [data["label"] for data in dataset_batch]
 
