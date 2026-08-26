@@ -3,6 +3,7 @@ import torch.nn as nn
 import lightning as pl
 from torch.optim import Adam
 from torch.nn.functional import cross_entropy
+from torchmetrics.classification import MulticlassF1Score
 
 
 class ConvolutionalBlock(nn.Module):
@@ -87,7 +88,6 @@ class LightningClassifier(pl.LightningModule):
     A lightning module for the CNN architecture. It facilitates the training process
     when using lightning trainer. Automatically logs hyperparameters.
     args:
-        classifier - An instance of the ClassyClassifier architecture.
         conv_layers - The desired number convolutional blocks for the architecture.
         filters - The different number of filters to be applied. The length of the 
             list must match the number of conv_layers.
@@ -98,21 +98,22 @@ class LightningClassifier(pl.LightningModule):
         lr - Learning rate. 
     All of the previous parameters are the hyperparameters required by the ClassyClassifier model.
     """
-    def __init__(self, classifier: ClassyClassifier, conv_layers: int, filters: list[int], kernel_sizes: list[int], dropout: float, fc_size: int, lr: float):
+    def __init__(self, conv_layers: int, filters: list[int], kernel_sizes: list[int], dropout: float, fc_size: int, lr: float):
         super().__init__()
-        self.save_hyperparameters(ignore=['classifier'])
+        self.save_hyperparameters()
         self.conv_layers = conv_layers
         self.filters = filters
         self.kernels = kernel_sizes
         self.dropout = dropout
         self.fc_size = fc_size
         self.lr = lr
-        self.model = classifier(conv_layers=self.conv_layers,
+        self.model = ClassyClassifier(conv_layers=self.conv_layers,
                                 filters=self.filters,
                                 kernel_sizes=self.kernels,
                                 dropout=self.dropout,
                                 fc_size=self.fc_size,
                                 lr=self.lr)
+        self.val_f1score = MulticlassF1Score(num_classes=38, average="macro")
 
     def forward(self, x):
         return self.model(x)
@@ -120,10 +121,27 @@ class LightningClassifier(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x = batch["image_tensor"]
         y = batch["labels"]
-        y_pred = self(x)
-        loss = cross_entropy(y_pred, y)
+        y_hat = self(x)
+        loss = cross_entropy(y_hat, y)
         self.log("train_loss", loss)
         return loss
+
+    def validation_step(self, batch, batch_idx):
+        x = batch["image_tensor"]
+        y = batch["labels"]
+        y_hat = self.model(x)
+        prediction = torch.argmax(y_hat, dim=1)
+        self.val_f1score.update(prediction, y)
+
+        loss = cross_entropy(y_hat, y)
+        self.log("val_loss", loss, on_epoch=True)
+
+        return loss
+
+    def on_validation_epoch_end(self):
+        f1_score = self.val_f1score.compute()
+        self.log("val_f1score", f1_score)
+        self.val_f1score.reset()
 
     def configure_optimizers(self):
         return Adam(self.model.parameters(), lr=self.lr)
