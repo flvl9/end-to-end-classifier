@@ -5,15 +5,26 @@ import logging
 import datetime
 import lightning as pl
 from zenml import step
+from typing import Dict, Any
 from optimization_loop import objective
 
 logging.basicConfig(level=logging.DEBUG)
 
 @step(experiment_tracker="mlflow_tracker", enable_cache=False)
-def hyperparameter_tuning(data_module, n_trials, n_epochs):
+def hyperparameter_tuning(data_module: pl.LightningDataModule, n_trials: int, n_epochs: int) -> Dict[str, Any]:
+    """
+    Defines the logic of the hyperparameter tuning process.
+    The experiments, metrics and parameters are logged to mlflow.
+    args:
+        data_module - The Lightning datamodule containing the training/validation data.
+        n_trials - The number of trials to perform the optimization process.
+        n_epochs - The number of epochs that each trial will run.
+    returns:
+        A dictionary containing the best hyperparameters for further training the model.
+    """
     logging.info("Initializing hyperparameter tuning process...")
     logging.info(f"The tuning process will have {n_trials} trials with {n_epochs} epochs each.")
-    gpu_available = torch.cuda.is_available() # This is optional as one can create a parameter for this when defining the pipeline
+    gpu_available = torch.cuda.is_available() 
     accelerator = "gpu" if gpu_available else "cpu"
     n_jobs = 1 if gpu_available else -1
 
