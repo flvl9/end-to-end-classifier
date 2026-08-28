@@ -33,7 +33,7 @@ def get_hyperparameters(trial: Trial) -> Dict[str, Any]:
         "fc_size": fc_size
     }
 
-def objective(trial: Trial, dm: pl.LightningDataModule, n_epochs: int, accelerator: str, active_run: mlflow.ActiveRun) -> float:
+def objective(trial: Trial, dm: pl.LightningDataModule, n_epochs: int, accelerator: str) -> float:
     """
     Defines the objective function to be optimized with optuna.
     args:
@@ -60,26 +60,26 @@ def objective(trial: Trial, dm: pl.LightningDataModule, n_epochs: int, accelerat
             lr=hparams["lr"],
         )
 
-        classifier._log_hyperparams = False
-        mlf_logger = MLFlowLogger(
-            tracking_uri=mlflow.get_tracking_uri(),
-            run_id=active_run.info.run_id
-            )
+        mlf_logger = MLFlowLogger()
 
         trainer = pl.Trainer(
             max_epochs=n_epochs,
             callbacks=[PyTorchLightningPruningCallback(trial, monitor="val_f1score")],
             enable_progress_bar=False,
+            enable_checkpointing=False,
             logger=mlf_logger,
             accelerator=accelerator,
             devices=1,
+            enable_autolog_hparams=False
 
         )
 
         trainer.fit(model=classifier, datamodule=dm)
 
-        f1_score = trainer.callback_metrics["val_f1score"].item()
-        mlflow.log_metric("val_f1score", f1_score)
 
-        return f1_score
-       
+        if "val_f1score" in trainer.callback_metrics:
+            f1_score = trainer.callback_metrics["val_f1score"].item()
+            mlflow.log_metric("val_f1score", f1_score)
+            return f1_score
+
+        return 0.0
