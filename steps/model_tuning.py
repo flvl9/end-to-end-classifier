@@ -10,7 +10,12 @@ from optimization_loop import objective
 logging.basicConfig(level=logging.DEBUG)
 
 @step(experiment_tracker="mlflow_tracker", enable_cache=False)
-def hyperparameter_tuning(data_module: pl.LightningDataModule, n_trials: int, n_epochs: int, seed: int = 32) -> Dict[str, Any]:
+def hyperparameter_tuning(
+    data_module: pl.LightningDataModule, 
+    n_trials: int = 10, 
+    n_epochs: int = 3, 
+    seed: int = 32
+    ) -> Dict[str, Any]:
     """
     Defines the logic of the hyperparameter tuning process.
     The experiments, metrics and parameters are logged to mlflow.
