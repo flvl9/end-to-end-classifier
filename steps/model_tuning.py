@@ -5,47 +5,58 @@ import logging
 import lightning as pl
 from zenml import step
 from typing import Dict, Any
-from optimization_loop import objective
+from .optimization_loop import objective
 
 logging.basicConfig(level=logging.DEBUG)
 
 @step(experiment_tracker="mlflow_tracker", enable_cache=False)
 def hyperparameter_tuning(
     data_module: pl.LightningDataModule, 
-    n_trials: int = 10, 
-    n_epochs: int = 3, 
-    seed: int = 32
+    config: dict
     ) -> Dict[str, Any]:
     """
     Defines the logic of the hyperparameter tuning process.
-    The experiments, metrics and parameters are logged to mlflow.
+    The experiments, metrics, and parameters are logged to mlflow.
     args:
         data_module - The Lightning datamodule containing the training/validation data.
-        n_trials - The number of trials to perform the optimization process.
-        n_epochs - The number of epochs that each trial will run.
+        config - A dictionary containg the configurations for this step.
     returns:
         A dictionary containing the best hyperparameters for further training the model.
     """
     logging.info("Initializing hyperparameter tuning process...")
-    logging.info(f"The tuning process will have {n_trials} trials with {n_epochs} epochs each.")
-    pl.seed_everything(seed=seed, workers=True)
+    logging.info(f"The tuning process will have {config["n_trials"]} trials with {config["n_epochs"]} epochs each.")
+    pl.seed_everything(seed=config["seed"], workers=True)
 
-    gpu_available = torch.cuda.is_available() 
-    accelerator = "gpu" if gpu_available else "cpu"
-    n_jobs = 1 if gpu_available else -1
+    mlflow.log_param("n_trials", config["n_trials"])
+    mlflow.log_param("n_epochs", config["n_epochs"])
+    mlflow.log_param("seed", config["seed"])
 
-    mlflow.log_param("n_trials", n_trials)
-    mlflow.log_param("n_epochs", n_epochs)
-    mlflow.log_param("seed", seed)
+    # This call is necessary since the class weights depend on it.
+    data_module.setup("fit")
+    class_weights = data_module.class_weights
+    num_classes = data_module.num_classes
+
+    parent_run = mlflow.active_run()
+    parent_run_id = parent_run.info.run_id
 
     study = optuna.create_study(
         direction="maximize",
-        sampler=optuna.samplers.TPESampler(seed=seed)
+        sampler=optuna.samplers.TPESampler(seed=config["seed"])
     )
     study.optimize(
-        lambda trial: objective(trial, data_module, n_epochs, accelerator), 
-        n_trials=n_trials,
-        n_jobs=n_jobs
+        lambda trial: objective(
+            trial,
+            data_module,
+            config["n_epochs"],
+            config["accelerator"],
+            parent_run_id,
+            config["search_space"],
+            config["devices"],
+            class_weights,
+            num_classes
+            ), 
+        n_trials=config["n_trials"],
+        n_jobs=config["optuna_n_jobs"]
     )
 
     mlflow.log_params(study.best_params)

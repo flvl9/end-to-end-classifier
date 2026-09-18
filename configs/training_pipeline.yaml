@@ -1,0 +1,31 @@
+datamodule:
+  cache_dir: "cache"
+  data_dir: "dataset"
+  train_batch_size: 32
+  val_batch_size: 32
+  n_workers: 11
+
+tuning:
+  n_trials: 10
+  n_epochs: 3
+  seed: 42
+  accelerator: "gpu"
+  optuna_n_jobs: 1
+  trainer_devices: 1
+  search_space:
+    lr: [1e-5, 1e-1]
+    conv_layers: [1, 4]
+    filters: [32, 128]
+    kernel_sizes: [3, 5]
+    dropout: [0.1, 0.6]
+    fc_size: [64, 256]
+
+training:
+  accelerator: "gpu"
+  n_epochs: 10
+  n_devices: 1
+  early_stopping:
+    patience: 2
+    min_delta: 0.01
+  seed: 42
+  
