@@ -1,6 +1,5 @@
 import logging
 from zenml import step
-import lightning as pl
 from datamodule.datamodule import PlantVillageDatamodule
 from materializers.datamodule_materializer import PlantVillageMaterializer
 
@@ -8,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 @step(enable_cache=False,
       output_materializers=PlantVillageMaterializer)
-def get_datamodule(config: dict) -> pl.LightningDataModule:
+def get_datamodule(config: dict) -> PlantVillageDatamodule:
     """
     Creates a LightningDataModule for the training process.
     args:
