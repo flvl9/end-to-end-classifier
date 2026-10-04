@@ -6,6 +6,7 @@ from typing import Dict, Any
 from optuna.trial import Trial
 from mlflow.tracking import MlflowClient
 from lightning.pytorch.loggers import MLFlowLogger
+from lightning.pytorch.callbacks import ModelCheckpoint
 from model_design.model_architecture import LightningClassifier
 from optuna_integration.pytorch_lightning import PyTorchLightningPruningCallback
 
@@ -102,14 +103,26 @@ def objective(
             tracking_uri=mlflow.get_tracking_uri(),
         )
 
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=f"hp_tuning_checkpoint/trial{trial.number}",
+            save_top_k=1,
+            save_last=True,
+            monitor="val_f1score",
+            mode="max"
+        )
+
+        torch.set_float32_matmul_precision("medium")
+
         trainer = pl.Trainer(
             max_epochs=n_epochs,
-            callbacks=[PyTorchLightningPruningCallback(trial, monitor="val_f1score")],
+            callbacks=[
+                PyTorchLightningPruningCallback(trial, monitor="val_f1score"),
+                checkpoint_callback],
             enable_progress_bar=True,
-            enable_checkpointing=False,
             logger=mlf_logger,
             accelerator=accelerator,
-            devices=devices
+            devices=devices,
+            precision="bf16-mixed"
         )
 
         trainer.fit(model=classifier, datamodule=dm)
@@ -120,3 +133,32 @@ def objective(
             return f1_score
 
         return 0.0
+
+def format_hyperparameters(hparams: dict) -> dict:
+    """
+    Formats the hyperparameters retrieved from optuna into the required 
+    format for the model.
+    args:
+        hparams - The hyperparameters dictionary returned after
+            hyperparameter tuning.
+    returns:
+        A dictionary with the hyperparameters in the required format.
+    """
+    filters = []
+    kernel_sizes = []
+    for key in hparams.keys():
+        if "filters" in key:
+            filters.append(hparams[key])
+        elif "kernel" in key:
+            kernel_sizes.append(hparams[key])
+        else:
+            pass
+
+    return {
+        "conv_layers": hparams["conv_layers"],
+        "filters": filters,
+        "kernel_sizes": kernel_sizes,
+        "dropout": hparams["dropout"],
+        "fc_size": hparams["fc_size"],
+        "lr": hparams["lr"]
+    }
