@@ -1,4 +1,3 @@
-import torch
 import optuna
 import mlflow
 import logging
@@ -41,7 +40,14 @@ def hyperparameter_tuning(
 
     study = optuna.create_study(
         direction="maximize",
-        sampler=optuna.samplers.TPESampler(seed=config["seed"])
+        sampler=optuna.samplers.TPESampler(
+            seed=config["seed"],
+            n_startup_trials=10
+            ),
+        pruner=optuna.pruners.MedianPruner(
+            n_startup_trials=5,
+            n_warmup_steps=5
+            )
     )
     study.optimize(
         lambda trial: objective(
@@ -51,12 +57,12 @@ def hyperparameter_tuning(
             config["accelerator"],
             parent_run_id,
             config["search_space"],
-            config["devices"],
+            config["trainer_devices"],
             class_weights,
             num_classes
             ), 
         n_trials=config["n_trials"],
-        n_jobs=config["optuna_n_jobs"]
+        n_jobs=config["optuna_n_jobs"] # <- If working with one GPU, set to 1 to prevent OOM errors.
     )
 
     mlflow.log_params(study.best_params)
@@ -64,4 +70,12 @@ def hyperparameter_tuning(
 
     logging.info("The tuning process has ended successfully! Check the MLFlow UI to visualize results.")
 
-    return study.best_params
+    best_ckpt_path = f"hp_tuning_checkpoint/trial{study.best_trial.number}/best.ckpt"
+    logging.info(f"Best trial: {study.best_trial.number} | validation F1 score: {study.best_value:.4f}")
+    logging.info(f"The best checkpoint is at: {best_ckpt_path}")
+
+    return {
+        "best_params" :study.best_params,
+        "best_ckpt_path": best_ckpt_path,
+        "best_val_f1": study.best_value
+    }
