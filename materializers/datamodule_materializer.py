@@ -28,7 +28,7 @@ class PlantVillageMaterializer(BaseMaterializer):
     def extract_metadata(self, data: PlantVillageDatamodule) -> dict[str, Any]:
         return {
             "dataset_name": "GVJahnavi/PlantVillage_dataset",
-            "num_classes": data.num_classes,
+            "num_classes": "38",
         }
 
     def load(self, data_type: type) -> PlantVillageDatamodule:
