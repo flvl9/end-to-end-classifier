@@ -6,7 +6,7 @@ import logging
 import lightning as pl
 from zenml.enums import ArtifactType
 from zenml import step, ArtifactConfig
-from typing import Dict, Any, Annotated
+from typing import Dict, Any, Annotated, Tuple
 from lightning.pytorch.loggers import MLFlowLogger
 from .optimization_loop import format_hyperparameters
 from model_design.model_architecture import LightningClassifier
@@ -19,10 +19,12 @@ def train_model(
     data_module: pl.LightningDataModule,
     tuning_results: Dict[str, Any], 
     config: dict
-    )-> Annotated[str, ArtifactConfig(
-        name="final_model",
-        artifact_type=ArtifactType.MODEL
-    )]:
+    )-> Tuple[
+        Annotated[str, ArtifactConfig(
+            name="final_model",
+            artifact_type=ArtifactType.MODEL)],
+        float
+        ]:
     """
     Trains the model with the best hyperparameters from the hyperparameter tuning stage.
     args:
@@ -55,7 +57,10 @@ def train_model(
         num_classes=data_module.num_classes
         )
 
-    mlf_logger = MLFlowLogger()
+    mlf_logger = MLFlowLogger(
+        run_id=mlflow.active_run().info.run_id,
+        tracking_uri=mlflow.get_tracking_uri()
+    )
 
     early_stopping_callback = EarlyStopping(
         monitor="val_f1score",
@@ -69,7 +74,8 @@ def train_model(
         mode="max",
         save_top_k=1,
         dirpath="train_checkpoints/",
-        save_last=True
+        save_last=False,
+        enable_version_counter=False
     )
 
     torch.set_float32_matmul_precision("medium")
@@ -84,16 +90,19 @@ def train_model(
         )
 
     ckpt_path = tuning_results["best_ckpt_path"]
+    ckpt = torch.load(ckpt_path, weights_only=False)
+    model.load_state_dict(ckpt["state_dict"])
 
     trainer.fit(
         model=model,
-        datamodule=data_module,
-        ckpt_path=ckpt_path
+        datamodule=data_module
         )
 
-    if "val_f1score" in trainer.callback_metrics:
-        f1_score = trainer.callback_metrics["val_f1score"].item()
-        mlflow.log_metric("final_val_f1score", f1_score)
+    if checkpoints.best_model_score is None:
+        raise RuntimeError("No checkpoint was saved. Vlidation likely never ran.")
+
+    best_score = float(checkpoints.best_model_score)
+    mlflow.log_metric("final_val_f1score", best_score)
 
     best_model_path = checkpoints.best_model_path
 
@@ -104,4 +113,4 @@ def train_model(
 
     logging.info("Model was trained and logged successfully!")
 
-    return "artifacts/final.ckpt"
+    return "artifacts/final.ckpt", best_score

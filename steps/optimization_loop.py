@@ -3,8 +3,9 @@ import torch
 import mlflow
 import lightning as pl
 from typing import Dict, Any
-from optuna.trial import Trial
+from optuna.study import Study
 from mlflow.tracking import MlflowClient
+from optuna.trial import Trial, FrozenTrial
 from lightning.pytorch.loggers import MLFlowLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from model_design.model_architecture import LightningClassifier
@@ -50,6 +51,19 @@ def get_hyperparameters(trial: Trial, search_space: dict) -> Dict[str, Any]:
         "fc_size": fc_size,
         "lr": lr,
     }
+
+def get_best_model(study: Study, trial: FrozenTrial) -> None:
+    """
+    Retrieves best trial's checkpoint to the study level. 
+    args:
+        study - The current optuna study.
+        trial - The optuna trial.
+    """
+    if study.best_trial.number == trial.number:
+        study.set_user_attr(
+            "best_path",
+            trial.user_attrs["best_path"]
+        )
 
 def objective(
         trial: Trial,
@@ -108,7 +122,8 @@ def objective(
             save_top_k=1,
             save_last=True,
             monitor="val_f1score",
-            mode="max"
+            mode="max",
+            enable_version_counter=False
         )
 
         torch.set_float32_matmul_precision("medium")
@@ -127,12 +142,17 @@ def objective(
 
         trainer.fit(model=classifier, datamodule=dm)
 
+        trial.set_user_attr(
+                    "best_path",
+                    checkpoint_callback.best_model_path
+                )
+
         if "val_f1score" in trainer.callback_metrics:
             f1_score = trainer.callback_metrics["val_f1score"].item()
             client.log_metric(child_run.info.run_id, "val_f1score", f1_score)
-            return f1_score
+            return checkpoint_callback.best_model_score
 
-        return 0.0
+        raise RuntimeError("val_f1score not found in callback metrics.")
 
 def format_hyperparameters(hparams: dict) -> dict:
     """

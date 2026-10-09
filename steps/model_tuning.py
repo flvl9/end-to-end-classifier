@@ -4,7 +4,7 @@ import logging
 import lightning as pl
 from zenml import step
 from typing import Dict, Any
-from .optimization_loop import objective
+from .optimization_loop import objective, get_best_model
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -62,7 +62,8 @@ def hyperparameter_tuning(
             num_classes
             ), 
         n_trials=config["n_trials"],
-        n_jobs=config["optuna_n_jobs"] # <- If working with one GPU, set to 1 to prevent OOM errors.
+        n_jobs=config["optuna_n_jobs"], # <- If working with one GPU, set to 1 to prevent OOM errors.
+        callbacks=[get_best_model]
     )
 
     mlflow.log_params(study.best_params)
@@ -70,7 +71,7 @@ def hyperparameter_tuning(
 
     logging.info("The tuning process has ended successfully! Check the MLFlow UI to visualize results.")
 
-    best_ckpt_path = f"hp_tuning_checkpoint/trial{study.best_trial.number}/best.ckpt"
+    best_ckpt_path = study.user_attrs["best_path"]
     logging.info(f"Best trial: {study.best_trial.number} | validation F1 score: {study.best_value:.4f}")
     logging.info(f"The best checkpoint is at: {best_ckpt_path}")
 
