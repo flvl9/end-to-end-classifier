@@ -71,7 +71,7 @@ def hyperparameter_tuning(
 
     logging.info("The tuning process has ended successfully! Check the MLFlow UI to visualize results.")
 
-    best_ckpt_path = study.user_attrs["best_path"]
+    best_ckpt_path = study.best_trial.user_attrs["best_path"]
     logging.info(f"Best trial: {study.best_trial.number} | validation F1 score: {study.best_value:.4f}")
     logging.info(f"The best checkpoint is at: {best_ckpt_path}")
 
