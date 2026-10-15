@@ -18,39 +18,6 @@ VAL_TRANSFORMATIONS = transforms.Compose([
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-def train_transforms(dataset: Dict[str, List[Any]])-> Dict[str, List[Any]]:
-    """
-    Applies on-the-fly augmentations to the training data.
-    These augmentations simulate brightness variations, out of focus issues,
-    and texture changes.
-    args:
-        dataset - A dictionary containing a batch of a HuggingFace dataset.
-    returns:
-        dataset - A new dictionary containing an "image_tensor" with the 
-        transformations
-    """
-    
-
-    dataset["image_tensor"] = [TRAIN_TRANSFORMATIONS(image) for image in dataset["image"]]
-    
-    return dataset
-
-def val_transforms(dataset: Dict[str, List[Any]])-> Dict[str, List[Any]]:
-    """
-    Preprocesses the images by converting them to tensors and normalizing 
-    the pixel values.
-    args:
-        dataset - A dictionary containing a batch of a HuggingFace dataset.
-    returns:
-        dataset - The same dictionary with a new "image_tensor" key-value with
-        the normalized pixel values.
-    """
-    
-
-    dataset["image_tensor"] = [VAL_TRANSFORMATIONS(image) for image in dataset["image"]]
-
-    return dataset
-
 def collate(dataset_batch: List[Dict[str, Any]])-> Dict[str, torch.Tensor]:
     """
     Defines how to combine the samples of the dataset into a mini-batch.

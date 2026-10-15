@@ -1,16 +1,35 @@
 import os
+from typing import Any
 import torch
 import logging
 import numpy as np
 import lightning as pl
 from dotenv import load_dotenv
 from datasets import load_dataset, load_from_disk
-from torch.utils.data import DataLoader
-from .datamodule_utils import train_transforms, val_transforms, collate
+from torch.utils.data import Dataset, DataLoader
+from .datamodule_utils import TRAIN_TRANSFORMATIONS, VAL_TRANSFORMATIONS, collate
 
 load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 logging.basicConfig(level=logging.DEBUG)
+
+
+class PlantVillageDataset(Dataset):
+    def __init__(self, hf_dataset, transform):
+        self.dataset = hf_dataset
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        example = self.dataset[idx]
+        image = self.transform(example["image"])
+        label = example ["label"]
+        return {
+            "image_tensor": image,
+            "label": label
+        }
 
 
 class PlantVillageDatamodule(pl.LightningDataModule):
@@ -53,17 +72,14 @@ class PlantVillageDatamodule(pl.LightningDataModule):
     def setup(self, stage: str):
         # Only "fit" stage is used
         data_dict = load_from_disk(self.data_dir)
-        self.train_data = data_dict["train"]
-        # In this case, the "test" split serves as the validation data
-        self.val_data = data_dict["test"]
 
-        self.train_data.set_transform(train_transforms)
-        self.val_data.set_transform(val_transforms)
+        self.train_dataset = PlantVillageDataset(data_dict["train"], TRAIN_TRANSFORMATIONS)
+        self.val_dataset = PlantVillageDataset(data_dict["test"], VAL_TRANSFORMATIONS)
 
     @property
     def class_weights(self) -> torch.Tensor:
         if self._class_weights is None:
-            labels = np.array(self.train_data["label"])
+            labels = np.array(self.train_dataset["label"])
             self.num_classes = len(np.unique(labels))
             counts = np.bincount(labels, minlength=self.num_classes)
             counts[counts == 0] = 1 # Avoids division by zero in case of absent classes
@@ -75,7 +91,7 @@ class PlantVillageDatamodule(pl.LightningDataModule):
 
     def train_dataloader(self):
         train_dataset = DataLoader(
-            dataset=self.train_data,
+            dataset=self.train_dataset,
             batch_size=self.train_batch_size,
             shuffle=True,
             collate_fn=collate,
@@ -87,7 +103,7 @@ class PlantVillageDatamodule(pl.LightningDataModule):
 
     def val_dataloader(self):
         val_dataset = DataLoader(
-            dataset=self.val_data,
+            dataset=self.val_dataset,
             batch_size=self.val_batch_size, 
             shuffle=False, 
             collate_fn=collate,
