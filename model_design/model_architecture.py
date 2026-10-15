@@ -62,12 +62,10 @@ class ClassyClassifier(nn.Module):
         self.conv_blocks = nn.ModuleList()
 
         in_channels = 3
-        spatial = 256 # Image size
         for i in range(self.conv_layers):
             out_channels = self.filters[i]
             kernel_size = self.kernel_sizes[i]
             padding = (kernel_size - 1) // 2
-            spatial = (spatial - kernel_size + 1 + (2 * padding)) // 2
 
             block = ConvolutionalBlock(
                 in_channels=in_channels, 
@@ -78,11 +76,10 @@ class ClassyClassifier(nn.Module):
 
             self.conv_blocks.append(block)
             in_channels = out_channels
-        flatten_size = self.filters[-1] * spatial * spatial
 
         self.classifier_head = nn.Sequential(
             nn.Dropout(self.dropout),
-            nn.Linear(flatten_size, self.fc_size),
+            nn.Linear(self.filters[-1], self.fc_size),
             nn.ReLU(),
             nn.Dropout(self.dropout),
             nn.Linear(self.fc_size, 38)
@@ -91,6 +88,7 @@ class ClassyClassifier(nn.Module):
     def forward(self, x):
         for block in self.conv_blocks:
             x = block(x)
+        x = nn.functional.adaptive_avg_pool2d(x,1)
         x = torch.flatten(x, 1)
         return self.classifier_head(x)
 
