@@ -1,3 +1,4 @@
+import gc
 import os
 import torch
 import mlflow
@@ -160,6 +161,11 @@ def objective(
 
         best_score = float(checkpoint_callback.best_model_score)
         client.log_metric(child_run.info.run_id, "val_f1score", best_score)
+
+        # Cleanup
+        del trainer, classifier, checkpoint_callback, mlf_logger
+        gc.collect() 
+        torch.cuda.empty_cache()
 
         return best_score
 

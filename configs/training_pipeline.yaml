@@ -1,7 +1,7 @@
 datamodule:
-  train_batch_size: 32
-  val_batch_size: 32
-  n_workers: 11
+  train_batch_size: 16
+  val_batch_size: 16
+  n_workers: 2
 
 tuning:
   n_trials: 10

@@ -4,7 +4,7 @@ from torchvision import transforms
 
 TRAIN_TRANSFORMATIONS = transforms.Compose([
         transforms.Lambda(lambda img: img.convert("RGB")),
-        transforms.RandomResizedCrop(size=256),
+        transforms.RandomResizedCrop(size=128),
         transforms.RandomRotation(degrees=20),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.ColorJitter(brightness=0.45, contrast=0.45, saturation=0.2),
@@ -14,6 +14,8 @@ TRAIN_TRANSFORMATIONS = transforms.Compose([
     ])
 VAL_TRANSFORMATIONS = transforms.Compose([
         transforms.Lambda(lambda img: img.convert("RGB")),
+        transforms.Resize(128),
+        transforms.CenterCrop(128),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
