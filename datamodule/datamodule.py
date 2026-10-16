@@ -1,21 +1,29 @@
-import os
-from typing import Any
 import torch
 import logging
 import numpy as np
 import lightning as pl
-from dotenv import load_dotenv
-from datasets import load_dataset, load_from_disk
+from datasets import DatasetDict
+from torchvision import transforms
+from datasets import Dataset as HFDataset
 from torch.utils.data import Dataset, DataLoader
 from .datamodule_utils import TRAIN_TRANSFORMATIONS, VAL_TRANSFORMATIONS, collate
 
-load_dotenv()
-HF_TOKEN = os.getenv("HF_TOKEN")
 logging.basicConfig(level=logging.DEBUG)
 
-
 class PlantVillageDataset(Dataset):
-    def __init__(self, hf_dataset, transform):
+    """
+    A custom dataset for each split of the DatasetDict.
+    It enables on-the-fly augmentation, and the required
+    transformations for the images.
+    args:
+        hf_dataset - The corresponding HuggingFace dataset.
+        transform - The transformations to be applied to the images.
+    """
+    def __init__(
+            self,
+            hf_dataset: HFDataset,
+            transform: transforms.Compose
+            ):
         self.dataset = hf_dataset
         self.transform = transform
 
@@ -34,47 +42,31 @@ class PlantVillageDataset(Dataset):
 
 class PlantVillageDatamodule(pl.LightningDataModule):
     """
-    Defines the Data Module required by the lightning trainer.
-    Contains the logic of how to download and preprocess the dataset, returning
-    the dataloaders for the training and validation stages.
+    Creates a custom Datamodule for the lightning Trainer.
     args:
-        cache_dir - The directory where the dataset cache will be stored.
-        data_dir - The directory where the dataset will be created and stored.
+        dataset - The dataset containing the train/val splits.
         train_batch_size - Batch size for the training dataloader.
         val_batch_size - Batch size for the validation dataloader.
         n_workers: Number of subprocesses to load data in parallel.
     """
     def __init__(
             self,
-            cache_dir: str,
-            data_dir: str,
+            dataset: DatasetDict,
             train_batch_size: int,
             val_batch_size: int,
             n_workers: int
             ):
         super().__init__()
-        self.cache_dir = os.path.abspath(cache_dir)
-        self.data_dir = os.path.abspath(data_dir)
+        self.dataset = dataset
         self.train_batch_size = train_batch_size
         self.val_batch_size = val_batch_size
         self.n_workers = n_workers
         self._class_weights = None
 
-    def prepare_data(self):
-        if os.path.exists(self.data_dir):
-            logging.info("Dataset found on disk!")
-        else:
-            logging.info("Dataset folder was not found... Downloading data")
-            dataset = load_dataset("GVJahnavi/PlantVillage_dataset", cache_dir=self.cache_dir)
-            dataset.save_to_disk(self.data_dir)
-            logging.info("Data downloaded successfully!")
-
     def setup(self, stage: str):
         # Only "fit" stage is used
-        data_dict = load_from_disk(self.data_dir)
-
-        self.train_dataset = PlantVillageDataset(data_dict["train"], TRAIN_TRANSFORMATIONS)
-        self.val_dataset = PlantVillageDataset(data_dict["test"], VAL_TRANSFORMATIONS)
+        self.train_dataset = PlantVillageDataset(self.dataset["train"], TRAIN_TRANSFORMATIONS)
+        self.val_dataset = PlantVillageDataset(self.dataset["test"], VAL_TRANSFORMATIONS)
 
     @property
     def class_weights(self) -> torch.Tensor:
@@ -89,7 +81,7 @@ class PlantVillageDatamodule(pl.LightningDataModule):
                 )
         return self._class_weights
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         train_dataset = DataLoader(
             dataset=self.train_dataset,
             batch_size=self.train_batch_size,
@@ -101,7 +93,7 @@ class PlantVillageDatamodule(pl.LightningDataModule):
             )
         return train_dataset
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         val_dataset = DataLoader(
             dataset=self.val_dataset,
             batch_size=self.val_batch_size, 

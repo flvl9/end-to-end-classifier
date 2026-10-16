@@ -1,6 +1,7 @@
 import os
 import torch
 import mlflow
+import logging
 import lightning as pl
 from typing import Dict, Any
 from optuna.study import Study
@@ -12,6 +13,16 @@ from model_design.model_architecture import LightningClassifier
 from optuna_integration.pytorch_lightning import PyTorchLightningPruningCallback
 
 os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+
+
+class ReportValF1(pl.Callback):
+    def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+        if "val_f1score" in trainer.callback_metrics:
+            logging.info(
+            f"Epoch {trainer.current_epoch}: "
+            f"val_f1score={trainer.callback_metrics['val_f1score']:.4f}"
+            )
+
 
 def get_hyperparameters(trial: Trial, search_space: dict) -> Dict[str, Any]:
     """
@@ -120,7 +131,6 @@ def objective(
         checkpoint_callback = ModelCheckpoint(
             dirpath=f"hp_tuning_checkpoint/trial{trial.number}",
             save_top_k=1,
-            save_last=True,
             monitor="val_f1score",
             mode="max",
             enable_version_counter=False
@@ -132,7 +142,8 @@ def objective(
             max_epochs=n_epochs,
             callbacks=[
                 PyTorchLightningPruningCallback(trial, monitor="val_f1score"),
-                checkpoint_callback],
+                checkpoint_callback,
+                ReportValF1()],
             enable_progress_bar=True,
             logger=mlf_logger,
             accelerator=accelerator,
@@ -147,12 +158,10 @@ def objective(
                     checkpoint_callback.best_model_path
                 )
 
-        if "val_f1score" in trainer.callback_metrics:
-            f1_score = trainer.callback_metrics["val_f1score"].item()
-            client.log_metric(child_run.info.run_id, "val_f1score", f1_score)
-            return checkpoint_callback.best_model_score
+        best_score = float(checkpoint_callback.best_model_score)
+        client.log_metric(child_run.info.run_id, "val_f1score", best_score)
 
-        raise RuntimeError("val_f1score not found in callback metrics.")
+        return best_score
 
 def format_hyperparameters(hparams: dict) -> dict:
     """

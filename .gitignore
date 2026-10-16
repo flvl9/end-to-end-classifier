@@ -15,3 +15,6 @@ cache/
 Untitled.ipynb
 .zenml
 cahce/
+pipelines/
+app_interface.py
+lol.py

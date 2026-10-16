@@ -1,22 +1,22 @@
+import os
 import logging
 from zenml import step
-from datamodule.datamodule import PlantVillageDatamodule
-from materializers.datamodule_materializer import PlantVillageMaterializer
+from dotenv import load_dotenv
+from datasets import load_dataset, DatasetDict
+from zenml.integrations.huggingface.materializers.huggingface_datasets_materializer import HFDatasetMaterializer
 
+load_dotenv()
+HF_TOKEN = os.getenv("HF_TOKEN")
 logging.basicConfig(level=logging.DEBUG)
 
 @step(enable_cache=False,
-      output_materializers=PlantVillageMaterializer)
-def get_datamodule(config: dict) -> PlantVillageDatamodule:
+      output_materializers=HFDatasetMaterializer)
+def get_dataset() -> DatasetDict:
     """
-    Creates a LightningDataModule for the training process.
-    args:
-        config: A dictionary containing the configuration for the step.
+    Retrieves the Plant Village dataset for model training.
     returns:
-        data_module - The LightningDataModule object required for model training.
+        A DatasetDict containing the training and validation data.
     """
     logging.info("Initializing data preparation...")
-    data_module = PlantVillageDatamodule(**config)
-    logging.info("Datamodule was generated successfully!")
 
-    return data_module
+    return load_dataset("GVJahnavi/PlantVillage_dataset", token=HF_TOKEN)
