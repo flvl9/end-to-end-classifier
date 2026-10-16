@@ -15,16 +15,6 @@ from optuna_integration.pytorch_lightning import PyTorchLightningPruningCallback
 
 os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
 
-
-class ReportValF1(pl.Callback):
-    def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        if "val_f1score" in trainer.callback_metrics:
-            logging.info(
-            f"Epoch {trainer.current_epoch}: "
-            f"val_f1score={trainer.callback_metrics['val_f1score']:.4f}"
-            )
-
-
 def get_hyperparameters(trial: Trial, search_space: dict) -> Dict[str, Any]:
     """
     Generates the set of hyperparameters for a trial.
@@ -144,7 +134,7 @@ def objective(
             callbacks=[
                 PyTorchLightningPruningCallback(trial, monitor="val_f1score"),
                 checkpoint_callback,
-                ReportValF1()],
+                ],
             enable_progress_bar=True,
             logger=mlf_logger,
             accelerator=accelerator,

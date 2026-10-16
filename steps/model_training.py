@@ -6,7 +6,6 @@ from datasets import DatasetDict
 from typing import Annotated, Tuple
 from zenml.enums import ArtifactType
 from zenml import step, ArtifactConfig
-from .optimization_loop import ReportValF1
 from lightning.pytorch.loggers import MLFlowLogger
 from datamodule.datamodule import PlantVillageDatamodule
 from model_design.model_architecture import LightningClassifier
@@ -93,7 +92,7 @@ def train_model(
 
     trainer = pl.Trainer(
         max_epochs=train_config["n_epochs"],
-        callbacks=[early_stopping_callback, checkpoints, ReportValF1()],
+        callbacks=[early_stopping_callback, checkpoints],
         logger=mlf_logger,
         accelerator=train_config["accelerator"],
         devices=train_config["n_devices"],

@@ -143,7 +143,7 @@ class LightningClassifier(pl.LightningModule):
         y = batch["labels"]
         y_hat = self(x)
         loss = cross_entropy(y_hat, y, weight=self.class_weights)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -161,7 +161,7 @@ class LightningClassifier(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         f1_score = self.val_f1score.compute()
-        self.log("val_f1score", f1_score)
+        self.log("val_f1score", f1_score, prog_bar=True)
         self.val_f1score.reset()
 
     def configure_optimizers(self):
