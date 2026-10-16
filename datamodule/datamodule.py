@@ -71,7 +71,7 @@ class PlantVillageDatamodule(pl.LightningDataModule):
     @property
     def class_weights(self) -> torch.Tensor:
         if self._class_weights is None:
-            labels = np.array(self.train_dataset["label"])
+            labels = np.array(self.train_dataset.dataset["label"])
             self.num_classes = len(np.unique(labels))
             counts = np.bincount(labels, minlength=self.num_classes)
             counts[counts == 0] = 1 # Avoids division by zero in case of absent classes
