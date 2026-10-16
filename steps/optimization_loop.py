@@ -2,7 +2,6 @@ import gc
 import os
 import torch
 import mlflow
-import logging
 import lightning as pl
 from typing import Dict, Any
 from optuna.study import Study
