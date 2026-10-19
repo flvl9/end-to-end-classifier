@@ -92,7 +92,9 @@ def objective(
     returns:
         f1_score - The validation f1 score for the trial.
     """
-    client = MlflowClient()
+    client = MlflowClient(
+        tracking_uri=mlflow.get_tracking_uri()
+    )
 
     with mlflow.start_run(
         nested=True,
