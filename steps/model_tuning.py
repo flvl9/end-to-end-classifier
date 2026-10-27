@@ -72,7 +72,7 @@ def hyperparameter_tuning(
         direction="maximize",
         sampler=optuna.samplers.TPESampler(
             seed=tuning_config["seed"],
-            n_startup_trials=5 # Remember to change back to 10
+            n_startup_trials=10
             ),
         pruner=optuna.pruners.MedianPruner(
             n_startup_trials=5,
