@@ -10,11 +10,11 @@ wheels/
 .venv
 .env
 
-dataset/
-cache/
-Untitled.ipynb
+# zen folders
 .zenml
-cahce/
+.zen
+
+# Unfinished scripts
 pipelines/
 app_interface.py
 lol.py
