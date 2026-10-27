@@ -72,6 +72,7 @@ def objective(
         n_epochs: int,
         accelerator: str,
         parent_run_id,
+        parent_experiment_id,
         search_space: dict,
         devices: int,
         class_weights: torch.Tensor,
@@ -100,7 +101,7 @@ def objective(
         nested=True,
         run_name=f"trial_{trial.number}",
         parent_run_id=parent_run_id,
-        experiment_id=mlflow.active_run().info.experiment_id
+        experiment_id=parent_experiment_id
         ) as child_run:
 
         hparams = get_hyperparameters(trial, search_space)
@@ -115,7 +116,10 @@ def objective(
             num_classes=num_classes
             )
 
+        exp_name = client.get_experiment(child_run.info.experiment_id).name
+
         mlf_logger = MLFlowLogger(
+            experiment_name=exp_name,
             run_id=child_run.info.run_id,
             tracking_uri=mlflow.get_tracking_uri(),
         )

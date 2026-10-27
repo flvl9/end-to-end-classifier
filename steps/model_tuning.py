@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 @step(
         enable_cache=False,
+        experiment_tracker="mlflow_tracker",
         output_materializers={"best_model": PyTorchModuleMaterializer},
         settings={
             "experiment_tracker.mlflow":{
@@ -65,12 +66,13 @@ def hyperparameter_tuning(
 
     parent_run = mlflow.active_run()
     parent_run_id = parent_run.info.run_id
+    parent_experiment_id = parent_run.info.experiment_id
 
     study = optuna.create_study(
         direction="maximize",
         sampler=optuna.samplers.TPESampler(
             seed=tuning_config["seed"],
-            n_startup_trials=10
+            n_startup_trials=5 # Remember to change back to 10
             ),
         pruner=optuna.pruners.MedianPruner(
             n_startup_trials=5,
@@ -84,6 +86,7 @@ def hyperparameter_tuning(
             tuning_config["n_epochs"],
             tuning_config["accelerator"],
             parent_run_id,
+            parent_experiment_id,
             tuning_config["search_space"],
             tuning_config["trainer_devices"],
             class_weights,

@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 @step(
         enable_cache=False,
+        experiment_tracker="mlflow_tracker",
         output_materializers={"final_model": PyTorchModuleMaterializer},
         settings={
             "experiment_tracker.mlflow":{
@@ -68,6 +69,7 @@ def train_model(
     data_module.setup("fit")
 
     mlf_logger = MLFlowLogger(
+        experiment_name="model_training",
         run_id=mlflow.active_run().info.run_id,
         tracking_uri=mlflow.get_tracking_uri()
     )
